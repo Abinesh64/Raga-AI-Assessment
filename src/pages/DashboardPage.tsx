@@ -37,7 +37,6 @@ export function DashboardPage() {
     };
 
     try {
-      new Notification("Test", { body: "Hello" });
       if ("serviceWorker" in navigator) {
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification(payload.title, payload.options);
