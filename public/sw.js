@@ -1,19 +1,37 @@
+// ✅ Install
 self.addEventListener("install", (event) => {
   console.log("[SW] Installed");
-  self.skipWaiting();
+  self.skipWaiting(); // Activate immediately
 });
 
+// ✅ Activate
 self.addEventListener("activate", (event) => {
   console.log("[SW] Activated");
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(self.clients.claim()); // Take control instantly
 });
 
-// Optional: future push support
+// ✅ Handle Push Notifications (for future backend use)
 self.addEventListener("push", (event) => {
-  const data = event.data?.json() || {
+  console.log("[SW] Push received");
+
+  let data = {
     title: "Health SaaS",
     body: "New update available",
+    url: "/dashboard",
   };
+
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = {
+        title: parsed.title || data.title,
+        body: parsed.body || data.body,
+        url: parsed.url || data.url,
+      };
+    }
+  } catch (err) {
+    console.error("[SW] Push parse error:", err);
+  }
 
   event.waitUntil(
     self.registration.showNotification(data.title, {
@@ -21,24 +39,36 @@ self.addEventListener("push", (event) => {
       icon: "/favicon.ico",
       badge: "/favicon.ico",
       vibrate: [100, 50, 100],
-      data: { url: "/dashboard" },
+      data: { url: data.url },
     }),
   );
 });
 
+// ✅ Handle Notification Click
 self.addEventListener("notificationclick", (event) => {
+  console.log("[SW] Notification clicked");
+
   event.notification.close();
 
+  const targetUrl = event.notification.data?.url || "/";
+
   event.waitUntil(
-    clients
+    self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientsArr) => {
+        // If tab already open → focus it
         for (const client of clientsArr) {
-          if (client.url.includes("/dashboard") && "focus" in client) {
+          if (client.url.includes(targetUrl) && "focus" in client) {
             return client.focus();
           }
         }
-        return clients.openWindow("/dashboard");
+        // Otherwise → open new tab
+        return self.clients.openWindow(targetUrl);
       }),
   );
+});
+
+// ✅ Optional: handle notification close
+self.addEventListener("notificationclose", (event) => {
+  console.log("[SW] Notification closed");
 });
